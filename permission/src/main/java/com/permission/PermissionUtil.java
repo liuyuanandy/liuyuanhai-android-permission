@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
@@ -45,6 +46,12 @@ public class PermissionUtil {
     public final static String[] RECORD_AUDIO_PERMISSION=new String[]{Manifest.permission.RECORD_AUDIO};
     //调用短信读写权限
     public final static String[] SMS_PERMISSION=new String[]{Manifest.permission.READ_SMS,Manifest.permission.RECEIVE_WAP_PUSH,Manifest.permission.RECEIVE_MMS,Manifest.permission.RECEIVE_SMS,Manifest.permission.SEND_SMS};
+
+    //android 13 通知权限
+    public static final String[] POST_NOTIFICATIONS = new String[]{Manifest.permission.POST_NOTIFICATIONS};
+    //android 13 媒体权限
+    public static final String[] ANDROID_13_MEDIA_IMAGES_AND_VIDEOS_PERMISSSION = new String[]{Manifest.permission.READ_MEDIA_IMAGES,Manifest.permission.READ_MEDIA_VIDEO};
+    public static final String[] ANDROID_13_MEDIA_AUDIOS_PERMISSSION = new String[]{Manifest.permission.READ_MEDIA_AUDIO};
     /**
      * 动态申请权限对应code设置
      */
@@ -71,7 +78,12 @@ public class PermissionUtil {
     private final static int READ_STORAGE_CODE=110;
     //调用写sdCard权限
     private final static int WRITE_STORAGE_CODE=111;
-
+    //调用通知权限
+    private static final int POST_NOTIFICATIONS_CODE = 111;
+    //调用android 13 媒体权限
+    private static final int ANDROID_13_MEDIA_IMAGES_AND_VIDEOS_CODE = 112;
+    private static final int ANDROID_13_MEDIA_AUDIOS_CODE = 113;
+    //获取权限类型
     //获取权限类型
     public enum TYPE{
         CAMERA(1),  //调用相机权限
@@ -81,11 +93,12 @@ public class PermissionUtil {
         CALENDAR(5), //调用Calendar时间读写权限
         SENSORS(6), //调用传感器权限
         LOCATION(7),//调用位置信息权限
-        RECORD_AUDIO(8),//调用录音录像权限
-        SMS(9), //调用短信读写权限
-        READ_STORAGE(10),  //调用读写sdCard权限
-        WRITE_STORAGE(11);  //调用读写sdCard权限
-
+        LOCATION_BACK(8),//后台调用位置信息权限
+        RECORD_AUDIO(9),//调用录音录像权限
+        SMS(10), //调用短信读写权限
+        POST_NOTIFICATIONS(11),
+        ANDROID_13_MEDIA_IMAGES_AND_VIDEOS(12),
+        ANDROID_13_MEDIA_AUDIOS(13);
         int value;
         TYPE(int value) {
             this.value = value;
@@ -111,14 +124,13 @@ public class PermissionUtil {
         }
         return true;
     }
-
-
-    /**
-     * 开始提交请求权限
-     * @param context 上下文
-     * @param type 权限类型
-     */
-    public static void  startRequestPermission(Activity context,TYPE type) {
+    public static void isHavePermission(Context context, TYPE type, IsHavePermissionListener listener) {
+        boolean havePermission = isHavePermission(context, type);
+        if (listener != null) {
+            listener.isHavePermsssion(havePermission);
+        }
+    }
+    public static void startRequestPermission(Activity context, TYPE type) {
         String[] permissions = getPerMissions(type);
         ActivityCompat.requestPermissions(context, permissions, getRequestCode(type));
     }
@@ -126,29 +138,26 @@ public class PermissionUtil {
     /***
      * 权限
      * @param requestCode
-     * @param permissions
      * @param grantResults
      *  // 用户权限 申请 的回调方法
      * @Override
      * public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
      * super.onRequestPermissionsResult(requestCode, permissions, grantResults);
      */
-    public static void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults,TYPE type,PermissionGrantResutListener listener) {
+    public static void onRequestPermissionsResult(Activity context, int requestCode,int[] grantResults, TYPE type, PermissionGrantResutListener listener) {
         int code = getRequestCode(type);
-        if (requestCode == code) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Log.e("--------->","myreQuestCode = "+code);
-                if (grantResults[0]!= PackageManager.PERMISSION_GRANTED) {
-                    if(listener!=null){
-                        listener.grantFailed(type);
-                    }
-                } else {
-                    if(listener!=null){
-                        listener.grantSuccess(type);
-                    }
+        if (requestCode == code && Build.VERSION.SDK_INT >= 23) {
+            Log.e("--------->", "myreQuestCode = " + code);
+            if (grantResults[0] != 0) {
+
+                if (listener != null) {
+                    listener.grantFailed(type);
                 }
+            } else if (listener != null) {
+                listener.grantSuccess(type);
             }
         }
+
     }
     private static String[]  getPerMissions(TYPE type){
         String[] permissions =null;
@@ -172,25 +181,25 @@ public class PermissionUtil {
                 permissions = SENSORS_PERMISSION;
                 break;
             case 7:
-                // 判断编译版本,如果大于等于29,就用permissionsQ
-                if (Build.VERSION.SDK_INT >= 29) {
-                    permissions = LOCATION_PERMISSION_ANDROID_Q;
-                }else{
-                    permissions = LOCATION_PERMISSION;
-                }
+                permissions = LOCATION_PERMISSION;
                 break;
             case 8:
-                permissions = RECORD_AUDIO_PERMISSION;
+                permissions = LOCATION_BACK_PERMISSION;
                 break;
             case 9:
-                permissions = SMS_PERMISSION;
+                permissions = RECORD_AUDIO_PERMISSION;
                 break;
             case 10:
-                permissions = READ_STORAGE_PERMISSION;
+                permissions = SMS_PERMISSION;
                 break;
             case 11:
-                permissions = WRITE_STORAGE_PERMISSION;
+                permissions = POST_NOTIFICATIONS;
                 break;
+            case 12:
+                permissions = ANDROID_13_MEDIA_IMAGES_AND_VIDEOS_PERMISSSION;
+                break;
+            case 13:
+                permissions = ANDROID_13_MEDIA_AUDIOS_PERMISSSION;
         }
         return permissions;
     }
@@ -218,26 +227,48 @@ public class PermissionUtil {
             case 7:
                 code = LOCATION_CODE;
                 break;
-            case 8:
-                code = RECORD_AUDIO_CODE;
-                break;
-            case 9:
+            case 10:
                 code = SMS_CODE;
                 break;
-            case 10:
-                code = READ_STORAGE_CODE;
-                break;
             case 11:
-                code = WRITE_STORAGE_CODE;
+                code = POST_NOTIFICATIONS_CODE;
                 break;
+            case 12:
+                code = ANDROID_13_MEDIA_IMAGES_AND_VIDEOS_CODE;
+                break;
+            case 13:
+                code = ANDROID_13_MEDIA_AUDIOS_CODE;
         }
         return code;
     }
     /**
-     * 权限被拒绝后不允许弹出权限申请返回false,在权限请求结果中调用
+     * 判断用户是否 点击了不再提醒。(检测该权限是否还可以申请)
      * @return
      */
-    public static boolean getIsCanShowRequesPermissionRationable(Activity context,TYPE type){
+    public static boolean shouldShowRequestPermissionRationale(Activity context, TYPE type){
+        String[] permissions = getPerMissions(type);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return context.shouldShowRequestPermissionRationale(permissions[0]);
+        }
+        return false;
+    }
+    /**
+     * 手机是否开启位置服务，如果没有开启那么所有app将不能使用定位功能
+     */
+    public static boolean isLocServiceEnable(Context context) {
+        LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        boolean gps = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        boolean network = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        if (gps || network) {
+            return true;
+        }
+        return false;
+    }
+    /**
+     * 判断用户是否 点击了不再提醒。(检测该权限是否还可以申请)
+     * @return
+     */
+    public static boolean getIsCanShowRequesPermissionRationable(Activity context, TYPE type){
         String[] permissions = getPerMissions(type);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             return context.shouldShowRequestPermissionRationale(permissions[0]);
@@ -247,9 +278,12 @@ public class PermissionUtil {
     /**
      * 授权结果监听
      */
-    public interface PermissionGrantResutListener{
-        public void grantSuccess(TYPE type);
-        public void grantFailed(TYPE type);
+    public interface PermissionGrantResutListener {
+        void grantSuccess(TYPE var1);
+
+        void grantFailed(TYPE var1);
+
+        void grantFailedAndNotAllowRequest(TYPE var1);
     }
 
     /**
@@ -268,5 +302,18 @@ public class PermissionUtil {
             mIntent.putExtra("com.android.settings.ApplicationPkgName", context.getPackageName());
         }
         context.startActivity(mIntent);
+    }
+    public interface IsHavePermissionListener {
+        void isHavePermsssion(boolean var1);
+    }
+
+
+
+    public interface RequestPermissionListener {
+        void havePermission();
+
+        void canRequestPermission();
+
+        void notAllowRquestAgain();
     }
 }
