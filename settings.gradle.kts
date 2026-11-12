@@ -23,5 +23,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "liuyuanhai-permission"
-include(":app")
-include(":permission")
+include(":appKotlin")
+include(":kotlin-permission")
+include(":java-permission")
+include(":app-java")
