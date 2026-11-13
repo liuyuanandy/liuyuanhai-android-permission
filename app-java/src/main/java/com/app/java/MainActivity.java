@@ -17,15 +17,6 @@ public class MainActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                Log.d("MainActivity", "Back pressed");
-                setEnabled(false);
-                getOnBackPressedDispatcher().onBackPressed();
-                setEnabled(true);
-            }
-        });
         findViewById(R.id.button_request_camera_permission).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -34,7 +25,7 @@ public class MainActivity extends FragmentActivity {
                     //添加有权限需要进行的操作
                     Toast.makeText(MainActivity.this,"已获得权限",Toast.LENGTH_SHORT).show();
                 }else{
-                    //请求系统权限--无论是否勾选“不再询问”或拒绝都直接请求，在请求结果中处理被拒绝不能再次请求或可再次请求的情况。
+                    //请求权限--无论是否勾选“不再询问”或拒绝 都直接请求。
                     PermissionUtil.startRequestPermission(MainActivity.this,PermissionUtil.TYPE.CAMERA);
                 }
             }
@@ -42,24 +33,18 @@ public class MainActivity extends FragmentActivity {
     }
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        PermissionUtil.PermissionGrantResutListener listener = new PermissionUtil.PermissionGrantResutListener() {
-            public void grantSuccess(PermissionUtil.TYPE type) {
+        PermissionUtil.PermissionGrantResultListener listener = new PermissionUtil.PermissionGrantResultListener() {
+            public void granted(PermissionUtil.TYPE type) {
                 if (type.equals(PermissionUtil.TYPE.CAMERA)) {
                     Toast.makeText(MainActivity.this,"权限申请成功",Toast.LENGTH_SHORT).show();
-
+                    //正常继续执行需要的操作
                 }
             }
 
-            public void grantFailedCanShowRequestPermission(PermissionUtil.TYPE type) {
+            public void grantedFailed(PermissionUtil.TYPE type) {
                 if (type.equals(PermissionUtil.TYPE.CAMERA)) {
-                    Toast.makeText(MainActivity.this,"可以再次申请系统权限",Toast.LENGTH_SHORT).show();
-                }
-
-            }
-
-            public void grantFailedCanNotShowRequestPermission(PermissionUtil.TYPE type) {
-                if (type.equals(PermissionUtil.TYPE.CAMERA)) {
-                    Toast.makeText(MainActivity.this,"不可以再次申请系统权限",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this,"未获得授权",Toast.LENGTH_SHORT).show();
+                    //最佳处理，弹窗提示，并引导用户进入设置页授权
                 }
             }
         };

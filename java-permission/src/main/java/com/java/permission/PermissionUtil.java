@@ -10,7 +10,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -69,10 +71,10 @@ public final class PermissionUtil {
             new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION};
 
     //调用录音录像权限
-    public static final String[] RECORD_AUDIO_PERMISSION = new String[]{Manifest.permission.RECORD_AUDIO};
+    private static final String[] RECORD_AUDIO_PERMISSION = new String[]{Manifest.permission.RECORD_AUDIO};
 
     //调用短信读写权限
-    public static final String[] SMS_PERMISSION = new String[]{
+    private static final String[] SMS_PERMISSION = new String[]{
             Manifest.permission.READ_SMS,
             Manifest.permission.RECEIVE_WAP_PUSH,
             Manifest.permission.RECEIVE_MMS,
@@ -82,23 +84,19 @@ public final class PermissionUtil {
 
     //android 13 通知权限
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    public static final String[] POST_NOTIFICATIONS =
+    private static final String[] POST_NOTIFICATIONS =
             new String[]{Manifest.permission.POST_NOTIFICATIONS};
 
     //android 13 媒体权限
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    public static final String[] ANDROID_13_MEDIA_IMAGES_AND_VIDEOS_PERMISSSION = new String[]{
+    private static final String[] ANDROID_13_MEDIA_IMAGES_AND_VIDEOS_PERMISSSION = new String[]{
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO
     };
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    public static final String[] ANDROID_13_MEDIA_AUDIOS_PERMISSSION =
+    private static final String[] ANDROID_13_MEDIA_AUDIOS_PERMISSSION =
             new String[]{Manifest.permission.READ_MEDIA_AUDIO};
-
-    private PermissionUtil() {
-    }
-
     /**
      * 判断是否已获取到权限
      */
@@ -121,7 +119,6 @@ public final class PermissionUtil {
         String[] permissions = getPerMissions(type);
         ActivityCompat.requestPermissions(context, permissions, type.value);
     }
-
     /***
      * 权限
      * @param requestCode
@@ -136,24 +133,15 @@ public final class PermissionUtil {
             int requestCode,
             int[] grantResults,
             TYPE type,
-            PermissionGrantResutListener listener) {
+            PermissionGrantResultListener listener) {
         if (requestCode == type.value && Build.VERSION.SDK_INT >= 23 && listener != null) {
-            Log.e("--------------->","result length = "+grantResults.length);
-
             if (grantResults.length == 0) {
                 return;
             }
-            Log.e("--------------->","result = "+grantResults[0]);
-
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                listener.grantSuccess(type);
+                listener.granted(type);
             } else {
-                if(shouldShowRequestPermission(context,type)){
-                    listener.grantFailedCanShowRequestPermission(type);
-                }else{
-                    listener.grantFailedCanNotShowRequestPermission(type);
-                }
-
+                listener.grantedFailed(type);
             }
         }
     }
@@ -217,12 +205,8 @@ public final class PermissionUtil {
     }
 
     /**
-     * 是否应该显示请求权限判断
-     * true：表示建议向用户说明权限用途
-     * false：可能是首次请求、用户关闭弹窗或拒绝后不再询问等情况
-     * 此返回值不能判断是否可以再次请求权限
-     * 注意：此方法只能在onRequestPermissionsResult函数中判断才准确，在请求权限前判断不准确
-     * 所以，应在调用请求权限后，在onRequestPermissionsResult进行判断
+     * 是否应该向用户显示请求权限的依据（即：为什么使用权限）
+     * 注意此方法无法判断用户关闭了权限弹窗（未选择允许/拒绝）、无法判断弹窗是否能再次弹出，
      */
     public static boolean shouldShowRequestPermission(Activity context, TYPE type) {
         String[] permissions = getPerMissions(type);
@@ -295,11 +279,9 @@ public final class PermissionUtil {
     /**
      * 授权结果监听
      */
-    public interface PermissionGrantResutListener {
-        void grantSuccess(TYPE type);
+    public interface PermissionGrantResultListener {
+        void granted(TYPE type);//获的授权，继续操作
 
-        void grantFailedCanShowRequestPermission(TYPE type);
-
-        void grantFailedCanNotShowRequestPermission(TYPE type);
+        void grantedFailed(TYPE type);//没有授权，跳转至设置页设置
     }
 }
